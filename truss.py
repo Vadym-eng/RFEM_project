@@ -53,7 +53,7 @@ def truss_member_calculation(num, Ry1):
         sekt_memberA = Section.GetSection(memb_member).A
 
         old_sect1.append(
-            sekt_memberA * 10000
+            round(sekt_memberA * 10000, 3)
         )  # заполнение списка старыми сечениями (A) (cm^2)
 
         sect1.append(
