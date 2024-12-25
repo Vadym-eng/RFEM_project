@@ -88,14 +88,29 @@ def truss_member_calculation(num, Ry1):
         stress1.append(
             round((forces_new[i - 1] / sect1[i - 1]), 2)
         )  # заполнение списка напряжениями (σ) (kH/cm^2)
-    return stress1, conv_percent, sect1
+    return forces1, old_sect1, sect1, conv_percent, side1, forces_new, stress1
 
 
-for i in range(2):
-    a, b, c = truss_member_calculation(num1, Ry)
-    print("1-", a)
-    print("2-", b)
-    print("3-", c)
+for i in range(3):
+    (
+        forces_old,
+        sections_old,
+        sections_new,
+        convergence_percentage,
+        square_sides,
+        forces_new,
+        stresses,
+    ) = truss_member_calculation(num1, Ry)
+    print(f"Значения при {i+1} итерации")
+    print(f"Усилия в стержнях(стар)   {forces_old}")
+    print(f"Старые сечения:           {sections_old}")
+    print(f"Новые сечения:            {sections_new}")
+    print(f"Процент схождения:        {[i*1000 for i in convergence_percentage]}")
+    print(f"Сторона квадрата:         {square_sides}")
+    print(f"Усилия в стержнях(нов):   {forces_new}")
+    print(f"Напряжения:               {stresses}")
+    print("\n" * 3)
+
 
 tk = """while not(Ry-4<=min(a)) and not(max(a)<=Ry) and not(max(b)<= 5):
     a, b = truss_member_calculation(num1, Ry) # где a - напряжение и b - процент схождения"""
