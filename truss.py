@@ -1,4 +1,4 @@
-from RFEM.initModel import Model, Calculate_all
+from RFEM.initModel import Model, CalculateSelectedCases
 from RFEM.LoadCasesAndCombinations.loadCase import *
 from RFEM.LoadCasesAndCombinations.staticAnalysisSettings import *
 from RFEM.Results.resultTables import *
@@ -8,7 +8,7 @@ import math as mt
 
 Ry = 23.5
 
-Model(new_model=False, model_name="Ферма(маленькая)(python)")
+Model(new_model=False, model_name="Ферма(маленькая)(python)", delete=True)
 Model.clientModel.service.begin_modification()
 LoadCase(1, "LC 1", [True, 0, 0, 1])
 StaticAnalysisSettings(1, "LC 1", StaticAnalysisType.GEOMETRICALLY_LINEAR)
@@ -31,8 +31,8 @@ num1 = count_elements()
 
 # начало расчета
 def truss_member_calculation(num, Ry1):
-
-    Calculate_all()
+    Model.clientModel.service.delete_all_results()
+    CalculateSelectedCases([1])
     forces1, forces_new, side1, sect1, stress1, old_sect1, conv_percent = [
         [] for _ in range(7)
     ]
@@ -72,7 +72,8 @@ def truss_member_calculation(num, Ry1):
             no=memb_member, name=f"SQ_M1 {side1[i-1]}", material_no=1
         )  # назначение результатов стержня (a)
 
-    Calculate_all()
+    Model.clientModel.service.delete_all_results()
+    CalculateSelectedCases([1])
 
     # получение нового значения N и σ
     for i in range(1, num + 1):
@@ -105,8 +106,8 @@ for i in range(3):
     print(f"Усилия в стержнях(стар)   {forces_old}")
     print(f"Старые сечения:           {sections_old}")
     print(f"Новые сечения:            {sections_new}")
-    print(f"Процент схождения:        {[i*1000 for i in convergence_percentage]}")
-    print(f"Сторона квадрата:         {square_sides}")
+    print(f"Процент схождения:        {convergence_percentage}")
+    print(f"Сторона квадрата:         {[round(i*1000, 2) for i in square_sides]}")
     print(f"Усилия в стержнях(нов):   {forces_new}")
     print(f"Напряжения:               {stresses}")
     print("\n" * 3)
