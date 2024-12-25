@@ -97,7 +97,7 @@ for i in range(2):
     print("2-", b)
     print("3-", c)
 
-tk = """while not(Ry-4<=max(a)<=Ry) and not(max(b)<= 5):
+tk = """while not(Ry-4<=min(a)) and not(max(a)<=Ry) and not(max(b)<= 5):
     a, b = truss_member_calculation(num1, Ry) # где a - напряжение и b - процент схождения"""
 
 Model.clientModel.service.finish_modification()
