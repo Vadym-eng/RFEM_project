@@ -5,6 +5,7 @@ from RFEM.Results.resultTables import *
 from RFEM.BasicObjects.member import Member
 from RFEM.BasicObjects.section import Section
 import math as mt
+import pandas as pd
 
 Ry = 23.5
 
@@ -12,6 +13,8 @@ Model(new_model=False, model_name="Ферма(маленькая)(python)", dele
 Model.clientModel.service.begin_modification()
 LoadCase(1, "LC 1", [True, 0, 0, 1])
 StaticAnalysisSettings(1, "LC 1", StaticAnalysisType.GEOMETRICALLY_LINEAR)
+Model.clientModel.service.delete_all_results()
+CalculateSelectedCases([1])
 
 
 # подсет стержней
@@ -31,9 +34,7 @@ num1 = count_elements()
 
 # начало расчета
 def truss_member_calculation(num, Ry1):
-    Model.clientModel.service.delete_all_results()
-    CalculateSelectedCases([1])
-    forces1, forces_new, side1, sect1, stress1, old_sect1, conv_percent = [
+    forces1, forces_new1, side1, sect1, stress1, old_sect1, conv_percent1 = [
         [] for _ in range(7)
     ]
 
@@ -57,15 +58,19 @@ def truss_member_calculation(num, Ry1):
         )  # заполнение списка старыми сечениями (A) (cm^2)
 
         sect1.append(
-            round((forces1[i - 1] / Ry1), 3)
+            0.01
+            if round((forces1[i - 1] / Ry1), 3) == 0
+            else round((forces1[i - 1] / Ry1), 3)
         )  # заполнение списка новыми сечениями (A) (cm^2)
 
-        conv_percent.append(
-            round(abs((1 - (sect1[i - 1] / old_sect1[i - 1])) * 100), 2)
+        conv_percent1.append(
+            round(abs(1 - (sect1[i - 1] / old_sect1[i - 1])), 2)
         )  # заполнение списка процентом схождения старого и нового сечения %
 
         side1.append(
-            mt.ceil(mt.sqrt(sect1[i - 1]) * 100) / 10000
+            0.1
+            if mt.ceil(mt.sqrt(sect1[i - 1]) * 100) / 10000 == 0
+            else mt.ceil(mt.sqrt(sect1[i - 1]) * 100) / 10000
         )  # вычисление стороны квадрата (a) по информации из списка (m)
 
         Section(
@@ -82,38 +87,67 @@ def truss_member_calculation(num, Ry1):
             loading_no=1,
             object_no=i,
         )
-        forces_new.append(
+        forces_new1.append(
             abs(round(member_forces1[0]["internal_force_n"] / 1000, 2))
         )  # заполнение списка новыми значениями усилий (N) в стержнях (kN)
 
         stress1.append(
-            round((forces_new[i - 1] / sect1[i - 1]), 2)
+            round((forces_new1[i - 1] / sect1[i - 1]), 2)
         )  # заполнение списка напряжениями (σ) (kH/cm^2)
-    return forces1, old_sect1, sect1, conv_percent, side1, forces_new, stress1
+    return (
+        sect1,
+        [round(i * 100, 2) for i in side1],
+        conv_percent1,
+        forces_new1,
+        stress1,
+        forces1,
+        old_sect1,
+    )
 
 
-for i in range(3):
+# вывод результатов
+all_data = {}
+min_valie_checking_economic_cross_section = Ry - 2
+i = 9
+stress, conv_percent = [1], [1]
+
+while not (
     (
-        forces_old,
-        sections_old,
-        sections_new,
-        convergence_percentage,
-        square_sides,
-        forces_new,
-        stresses,
-    ) = truss_member_calculation(num1, Ry)
+        min_valie_checking_economic_cross_section <= min(stress)
+        and max(stress) <= Ry
+        and max(conv_percent) <= 0.05
+    )
+    or i == 40
+):  # проверка результатов итеррации и остановка процесса при при достижении одного из условий (1 - по результатам стержней, 2 - по достижению макс итераций)
+    i += 1
+    sect, side, conv_percent, forces_new, stress, forces, old_sect = (
+        truss_member_calculation(num1, Ry)
+    )
     print(f"Значения при {i+1} итерации")
-    print(f"Усилия в стержнях(стар)   {forces_old}")
-    print(f"Старые сечения:           {sections_old}")
-    print(f"Новые сечения:            {sections_new}")
-    print(f"Процент схождения:        {convergence_percentage}")
-    print(f"Сторона квадрата:         {[round(i*1000, 2) for i in square_sides]}")
+    print(f"Усилия в стержнях(стар)   {forces}")
+    print(f"Старые сечения:           {old_sect}")
+    print(f"Новые сечения:            {sect}")
+    print(f"Процент схождения:        {conv_percent}")
+    print(f"Сторона квадрата:         {side}")
     print(f"Усилия в стержнях(нов):   {forces_new}")
-    print(f"Напряжения:               {stresses}")
+    print(f"Напряжения:               {stress}")
     print("\n" * 3)
 
+    columns = [
+        f"A [см^2] (i={i})",
+        f"a [см] (i={i})",
+        f"Проц. схожд. [%] A(i={i})/A(i={i-1})",
+        f"N [кН] (i={i-1})",
+        f"σ [kH/cm^2] (i={i})",
+    ]
 
-tk = """while not(Ry-4<=min(a)) and not(max(a)<=Ry) and not(max(b)<= 5):
-    a, b = truss_member_calculation(num1, Ry) # где a - напряжение и b - процент схождения"""
+    all_data[columns[0]] = sect
+    all_data[columns[1]] = side
+    all_data[columns[2]] = conv_percent
+    all_data[columns[3]] = forces_new
+    all_data[columns[4]] = stress
+
+results_columns = pd.DataFrame(all_data, index=[i for i in range(1, num1 + 1)])
+results_columns.to_excel("results.xlsx")
 
 Model.clientModel.service.finish_modification()
